@@ -1,0 +1,4 @@
+CREATE POLICY "own scan files select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'scans' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "own scan files insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'scans' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "own scan files update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'scans' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "own scan files delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'scans' AND (storage.foldername(name))[1] = auth.uid()::text);
