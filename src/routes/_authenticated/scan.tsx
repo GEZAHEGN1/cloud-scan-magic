@@ -216,6 +216,7 @@ function ScanPage() {
 
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
+        if (!page) continue;
         const blob = await canvasToBlob(page.canvas);
         const path = `${uid}/${doc.id}/${i}-${page.id}.jpg`;
         const { error: upErr } = await supabase.storage

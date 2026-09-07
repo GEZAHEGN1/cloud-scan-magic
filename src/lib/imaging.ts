@@ -59,7 +59,8 @@ export function autoDetectQuad(source: HTMLCanvasElement): Quad {
   const { data } = sctx.getImageData(0, 0, sw, sh);
   const lum = new Float32Array(sw * sh);
   for (let i = 0; i < sw * sh; i++) {
-    lum[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+    lum[i] =
+      0.299 * (data[i * 4] ?? 0) + 0.587 * (data[i * 4 + 1] ?? 0) + 0.114 * (data[i * 4 + 2] ?? 0);
   }
 
   // Page is usually the brightest large region: threshold at midpoint between
@@ -67,8 +68,9 @@ export function autoDetectQuad(source: HTMLCanvasElement): Quad {
   let min = 255;
   let max = 0;
   for (let i = 0; i < lum.length; i++) {
-    if (lum[i] < min) min = lum[i];
-    if (lum[i] > max) max = lum[i];
+    const v = lum[i] ?? 0;
+    if (v < min) min = v;
+    if (v > max) max = v;
   }
   const thr = min + (max - min) * 0.45;
 
@@ -79,7 +81,7 @@ export function autoDetectQuad(source: HTMLCanvasElement): Quad {
   for (let y = 0; y < sh; y++) {
     let run = 0;
     for (let x = 0; x < sw; x++) {
-      if (lum[y * sw + x] > thr) run++;
+      if ((lum[y * sw + x] ?? 0) > thr) run++;
     }
     if (run > sw * 0.25) {
       if (y < top) top = y;
@@ -89,7 +91,7 @@ export function autoDetectQuad(source: HTMLCanvasElement): Quad {
   for (let x = 0; x < sw; x++) {
     let run = 0;
     for (let y = 0; y < sh; y++) {
-      if (lum[y * sw + x] > thr) run++;
+      if ((lum[y * sw + x] ?? 0) > thr) run++;
     }
     if (run > sh * 0.25) {
       if (x < left) left = x;
@@ -152,10 +154,10 @@ export function dewarp(source: HTMLCanvasElement, quad: Quad, maxWidth = 1600): 
       const fy = sy - y0;
       const di = (j * outW + i) * 4;
       for (let c = 0; c < 3; c++) {
-        const p00 = src.data[(y0 * sw + x0) * 4 + c];
-        const p10 = src.data[(y0 * sw + x1) * 4 + c];
-        const p01 = src.data[(y1 * sw + x0) * 4 + c];
-        const p11 = src.data[(y1 * sw + x1) * 4 + c];
+        const p00 = src.data[(y0 * sw + x0) * 4 + c] ?? 0;
+        const p10 = src.data[(y0 * sw + x1) * 4 + c] ?? 0;
+        const p01 = src.data[(y1 * sw + x0) * 4 + c] ?? 0;
+        const p11 = src.data[(y1 * sw + x1) * 4 + c] ?? 0;
         out.data[di + c] =
           p00 * (1 - fx) * (1 - fy) + p10 * fx * (1 - fy) + p01 * (1 - fx) * fy + p11 * fx * fy;
       }
@@ -184,7 +186,7 @@ function illumination(canvas: HTMLCanvasElement): { data: Float32Array; w: numbe
   const img = ctx.getImageData(0, 0, w, h).data;
   let field = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) {
-    field[i] = Math.max(img[i * 4], img[i * 4 + 1], img[i * 4 + 2]);
+    field[i] = Math.max(img[i * 4] ?? 0, img[i * 4 + 1] ?? 0, img[i * 4 + 2] ?? 0);
   }
   // Two box-blur passes ~ gaussian.
   for (let pass = 0; pass < 2; pass++) {
@@ -199,7 +201,7 @@ function illumination(canvas: HTMLCanvasElement): { data: Float32Array; w: numbe
             const nx = x + dx;
             const ny = y + dy;
             if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-            sum += field[ny * w + nx];
+            sum += field[ny * w + nx] ?? 0;
             n++;
           }
         }
@@ -221,10 +223,10 @@ function sampleField(f: { data: Float32Array; w: number; h: number }, u: number,
   const fx = x - x0;
   const fy = y - y0;
   return (
-    f.data[y0 * f.w + x0] * (1 - fx) * (1 - fy) +
-    f.data[y0 * f.w + x1] * fx * (1 - fy) +
-    f.data[y1 * f.w + x0] * (1 - fx) * fy +
-    f.data[y1 * f.w + x1] * fx * fy
+    (f.data[y0 * f.w + x0] ?? 0) * (1 - fx) * (1 - fy) +
+    (f.data[y0 * f.w + x1] ?? 0) * fx * (1 - fy) +
+    (f.data[y1 * f.w + x0] ?? 0) * (1 - fx) * fy +
+    (f.data[y1 * f.w + x1] ?? 0) * fx * fy
   );
 }
 
@@ -243,9 +245,9 @@ export function enhance(canvas: HTMLCanvasElement, mode: EnhanceMode): HTMLCanva
       const u = x / (w - 1 || 1);
       const bg = Math.max(40, sampleField(field, u, v));
       const i = (y * w + x) * 4;
-      let r = (img.data[i] / bg) * 255;
-      let g = (img.data[i + 1] / bg) * 255;
-      let b = (img.data[i + 2] / bg) * 255;
+      let r = ((img.data[i] ?? 0) / bg) * 255;
+      let g = ((img.data[i + 1] ?? 0) / bg) * 255;
+      let b = ((img.data[i + 2] ?? 0) / bg) * 255;
       // Contrast stretch around paper white.
       const lift = (val: number) => {
         const t = (val - 150) / 105;
