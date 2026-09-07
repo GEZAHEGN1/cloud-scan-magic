@@ -59,7 +59,8 @@ export function autoDetectQuad(source: HTMLCanvasElement): Quad {
   const { data } = sctx.getImageData(0, 0, sw, sh);
   const lum = new Float32Array(sw * sh);
   for (let i = 0; i < sw * sh; i++) {
-    lum[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+    lum[i] =
+      0.299 * (data[i * 4] ?? 0) + 0.587 * (data[i * 4 + 1] ?? 0) + 0.114 * (data[i * 4 + 2] ?? 0);
   }
 
   // Page is usually the brightest large region: threshold at midpoint between
@@ -67,8 +68,9 @@ export function autoDetectQuad(source: HTMLCanvasElement): Quad {
   let min = 255;
   let max = 0;
   for (let i = 0; i < lum.length; i++) {
-    if (lum[i] < min) min = lum[i];
-    if (lum[i] > max) max = lum[i];
+    const v = lum[i] ?? 0;
+    if (v < min) min = v;
+    if (v > max) max = v;
   }
   const thr = min + (max - min) * 0.45;
 
