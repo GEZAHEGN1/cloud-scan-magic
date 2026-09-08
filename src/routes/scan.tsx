@@ -205,7 +205,11 @@ function ScanPage() {
     try {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
-      if (!uid) throw new Error("Please sign in again.");
+      if (!uid) {
+        toast.info("Sign in to keep this scan in your library. Your pages stay here meanwhile.");
+        navigate({ to: "/auth" });
+        return;
+      }
 
       const { data: doc, error: docErr } = await supabase
         .from("documents")
