@@ -199,6 +199,33 @@ function ScanPage() {
     }
   }
 
+  async function downloadPdf() {
+    if (!pages.length) return;
+    setBusy("Building your PDF…");
+    try {
+      const { jsPDF } = await import("jspdf");
+      let pdf: import("jspdf").jsPDF | null = null;
+      for (const page of pages) {
+        const { width, height } = page.canvas;
+        const orientation = width > height ? "landscape" : "portrait";
+        if (!pdf) pdf = new jsPDF({ orientation, unit: "px", format: [width, height] });
+        else pdf.addPage([width, height], orientation);
+        pdf.addImage(page.canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, width, height);
+      }
+      const blob = pdf!.output("blob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "scan.pdf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      toast.error("Could not build the PDF");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function saveAll() {
     if (!pages.length) return;
     setBusy("Saving your scan…");
@@ -413,6 +440,25 @@ function ScanPage() {
               <Check className="mr-2 h-4 w-4" /> Save scan
             </Button>
           </div>
+
+          {pages.length > 0 && (
+            <>
+              <Button variant="secondary" size="lg" className="mt-3 w-full" onClick={downloadPdf}>
+                <Download className="mr-2 h-4 w-4" /> Download PDF
+              </Button>
+              <div className="mt-6">
+                <ReconstructPanel
+                  title="Scan"
+                  fileBase="scan"
+                  pageTexts={pages.map((p) => p.text ?? "")}
+                  beforeUrl={pages[0]?.preview}
+                />
+              </div>
+              <p className="mt-3 text-center text-sm text-muted-foreground">
+                No account needed. Sign in only if you want your scans kept in a library.
+              </p>
+            </>
+          )}
         </section>
       )}
 
