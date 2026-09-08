@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { ReconstructPanel } from "@/components/ReconstructPanel";
 
 export const Route = createFileRoute("/_authenticated/doc/$docId")({
   head: () => ({
@@ -227,6 +228,13 @@ function DocPage() {
               </Button>
             </div>
           </div>
+
+          <ReconstructPanel
+            title={title ?? data.doc.title}
+            fileBase={fileBase}
+            pageTexts={data.pages.map((p) => p.ocr_text ?? "")}
+            beforeUrl={data.pages[0]?.url}
+          />
 
           <div className="grid gap-4">
             {data.pages.map((page, i) => (
