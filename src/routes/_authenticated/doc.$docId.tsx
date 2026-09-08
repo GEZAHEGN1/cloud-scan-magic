@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { ReconstructPanel } from "@/components/ReconstructPanel";
 
 export const Route = createFileRoute("/_authenticated/doc/$docId")({
   head: () => ({
