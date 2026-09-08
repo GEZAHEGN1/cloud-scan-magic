@@ -229,6 +229,13 @@ function DocPage() {
             </div>
           </div>
 
+          <ReconstructPanel
+            title={title ?? data.doc.title}
+            fileBase={fileBase}
+            pageTexts={data.pages.map((p) => p.ocr_text ?? "")}
+            beforeUrl={data.pages[0]?.url}
+          />
+
           <div className="grid gap-4">
             {data.pages.map((page, i) => (
               <div key={page.id} className="surface overflow-hidden">
