@@ -28,7 +28,7 @@ import {
   type Quad,
 } from "@/lib/imaging";
 
-export const Route = createFileRoute("/_authenticated/scan")({
+export const Route = createFileRoute("/scan")({
   head: () => ({
     meta: [
       { title: "New scan — Flatlay" },
