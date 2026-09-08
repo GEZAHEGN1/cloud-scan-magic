@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
   Check,
+  Download,
   Images,
   Loader2,
   RotateCw,
@@ -27,6 +28,7 @@ import {
   type Pt,
   type Quad,
 } from "@/lib/imaging";
+import { ReconstructPanel } from "@/components/ReconstructPanel";
 
 export const Route = createFileRoute("/scan")({
   head: () => ({
