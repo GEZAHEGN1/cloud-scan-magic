@@ -1,12 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 /** Reads the text out of a scanned page using Lovable AI vision. */
 export const recognizeText = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ imageDataUrl: z.string().startsWith("data:image/") }).parse(input),
   )
@@ -65,7 +63,6 @@ const blockSchema = z.object({
  * reconstructed and reflowed at a new trim size.
  */
 export const analyzeLayout = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({ text: z.string().min(1).max(120000) }).parse(input),
   )
