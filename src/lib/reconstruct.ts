@@ -104,7 +104,7 @@ export async function renderBookPdf(
       continue;
     }
     const s = styleFor(block, layout);
-    pdf.setFont(font, s.bold ? "bold" : s.italic ? "italic" : "normal");
+    pdf.setFont(font, s.bold ? "bold" : s.italic && font === "times" ? "italic" : "normal");
     pdf.setFontSize(s.size);
     const width = contentW() - s.indent;
     const prefix = block.type === "list" ? "• " : "";
@@ -113,7 +113,7 @@ export async function renderBookPdf(
     y += s.spaceBefore;
     for (const line of lines) {
       if (y + lineH > layout.pageH - layout.marginBottom) newPage();
-      pdf.setFont(font, s.bold ? "bold" : s.italic ? "italic" : "normal");
+      pdf.setFont(font, s.bold ? "bold" : s.italic && font === "times" ? "italic" : "normal");
       pdf.setFontSize(s.size);
       pdf.text(line, leftMargin() + s.indent, y + s.size, { align: "left" });
       y += lineH;
@@ -166,7 +166,7 @@ export function renderPreview(canvas: HTMLCanvasElement, blocks: Block[], layout
     if (block.type === "pagebreak") continue;
     const s = styleFor(block, layout);
     y += s.spaceBefore * scale;
-    const weight = s.bold ? "bold" : s.italic ? "italic" : "normal";
+    const weight = s.bold ? "bold" : s.italic && font === "times" ? "italic" : "normal";
     if (drawLines(block.text, s.size, weight, s.indent, block.type === "list" ? "• " : "")) return;
     y += layout.leading * 0.35 * scale;
   }
