@@ -52,8 +52,6 @@ const registered = new WeakSet<object>();
 export async function ensurePdfFont(pdf: any, sample: string): Promise<string> {
   const faces = facesFor(sample);
   if (!faces) return "times";
-  const cacheKey = { pdf, key: faces.key } as const;
-  void cacheKey;
   const marker = (pdf.__fonts ??= {}) as Record<string, boolean>;
   if (!marker[faces.key]) {
     const [reg, bold] = await Promise.all([fetchBase64(faces.regular), fetchBase64(faces.bold)]);
