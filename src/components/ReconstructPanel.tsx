@@ -170,11 +170,11 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
         </figure>
         <figure>
           <figcaption className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">After</figcaption>
-          {blocks ? (
-            <canvas ref={canvasRef} className="w-full rounded-lg" />
+          {preview ? (
+            <canvas ref={canvasRef} className="w-full rounded-lg bg-paper" />
           ) : (
             <div className="flex aspect-[3/4] w-full items-center justify-center rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">
-              Rebuild to see the reconstructed page
+              Read the text of a page to see the rebuilt version
             </div>
           )}
         </figure>
