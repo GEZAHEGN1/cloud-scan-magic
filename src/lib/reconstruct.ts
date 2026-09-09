@@ -148,7 +148,7 @@ export async function renderPreview(
   let y = layout.marginTop * scale;
 
   const drawLines = (text: string, size: number, weight: string, indent = 0, prefix = "") => {
-    ctx.font = `${weight} ${size * scale}px Georgia, 'Times New Roman', serif`;
+    ctx.font = `${weight} ${size * scale}px ${family}`;
     const words = (prefix + text).split(/\s+/);
     let line = "";
     for (const word of words) {
@@ -173,7 +173,7 @@ export async function renderPreview(
     if (block.type === "pagebreak") continue;
     const s = styleFor(block, layout);
     y += s.spaceBefore * scale;
-    const weight = s.bold ? "bold" : s.italic && font === "times" ? "italic" : "normal";
+    const weight = s.bold ? "bold" : "normal";
     if (drawLines(block.text, s.size, weight, s.indent, block.type === "list" ? "• " : "")) return;
     y += layout.leading * 0.35 * scale;
   }
