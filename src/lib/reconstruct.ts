@@ -62,6 +62,9 @@ export async function renderBookPdf(
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "pt", format: [layout.pageW, layout.pageH], orientation: "portrait" });
   pdf.setProperties({ title: meta.title });
+  const sample = meta.title + " " + blocks.map((b) => ("text" in b ? b.text : "")).join(" ");
+  const font = await ensurePdfFont(pdf, sample);
+
 
   let pageIndex = 0;
   const contentW = () => layout.pageW - layout.marginInside - layout.marginOutside;
