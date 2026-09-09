@@ -1,4 +1,5 @@
 import type { BookLayout } from "./booksizes";
+import { ensureCanvasFont, ensurePdfFont } from "./fonts";
 
 export type Block =
   | { type: "heading"; level: 1 | 2 | 3; text: string }
