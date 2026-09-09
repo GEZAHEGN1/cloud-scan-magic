@@ -32,10 +32,26 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
   const sourceText = pageTexts.filter(Boolean).join("\n\n");
   const layout = buildLayout(trim, { pageCount: Math.max(24, pageTexts.length * 2), bodySize, pageNumbers });
 
+  // Preview the rebuilt page as soon as there is any recognised text, using
+  // the AI structure when it is available and a plain-text pass before that.
+  const preview = blocks ?? (sourceText ? blocksFromText(sourceText) : null);
+
   useEffect(() => {
-    if (blocks && canvasRef.current) renderPreview(canvasRef.current, blocks, layout, title);
+    const canvas = canvasRef.current;
+    if (!canvas || !preview) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (!cancelled) await renderPreview(canvas, preview, layout, title);
+      } catch {
+        /* preview is best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, trimId, bodySize, pageNumbers, title]);
+  }, [blocks, sourceText, trimId, bodySize, pageNumbers, title]);
 
   async function reconstruct() {
     if (!sourceText) {
@@ -154,11 +170,11 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
         </figure>
         <figure>
           <figcaption className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">After</figcaption>
-          {blocks ? (
-            <canvas ref={canvasRef} className="w-full rounded-lg" />
+          {preview ? (
+            <canvas ref={canvasRef} className="w-full rounded-lg bg-paper" />
           ) : (
             <div className="flex aspect-[3/4] w-full items-center justify-center rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">
-              Rebuild to see the reconstructed page
+              Read the text of a page to see the rebuilt version
             </div>
           )}
         </figure>

@@ -1,4 +1,5 @@
 import type { BookLayout } from "./booksizes";
+import { ensureCanvasFont, ensurePdfFont } from "./fonts";
 
 export type Block =
   | { type: "heading"; level: 1 | 2 | 3; text: string }
@@ -61,6 +62,9 @@ export async function renderBookPdf(
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "pt", format: [layout.pageW, layout.pageH], orientation: "portrait" });
   pdf.setProperties({ title: meta.title });
+  const sample = meta.title + " " + blocks.map((b) => ("text" in b ? b.text : "")).join(" ");
+  const font = await ensurePdfFont(pdf, sample);
+
 
   let pageIndex = 0;
   const contentW = () => layout.pageW - layout.marginInside - layout.marginOutside;
@@ -69,7 +73,7 @@ export async function renderBookPdf(
 
   const footer = () => {
     if (!layout.pageNumbers) return;
-    pdf.setFont("times", "normal");
+    pdf.setFont(font, "normal");
     pdf.setFontSize(layout.bodySize * 0.8);
     pdf.text(
       String(pageIndex + 1),
@@ -87,7 +91,7 @@ export async function renderBookPdf(
   };
 
   // Title page
-  pdf.setFont("times", "bold");
+  pdf.setFont(font, "bold");
   pdf.setFontSize(layout.bodySize * 2.2);
   pdf.text(pdf.splitTextToSize(meta.title, contentW()), layout.pageW / 2, layout.pageH * 0.38, {
     align: "center",
@@ -100,7 +104,7 @@ export async function renderBookPdf(
       continue;
     }
     const s = styleFor(block, layout);
-    pdf.setFont("times", s.bold ? "bold" : s.italic ? "italic" : "normal");
+    pdf.setFont(font, s.bold ? "bold" : s.italic && font === "times" ? "italic" : "normal");
     pdf.setFontSize(s.size);
     const width = contentW() - s.indent;
     const prefix = block.type === "list" ? "• " : "";
@@ -109,7 +113,7 @@ export async function renderBookPdf(
     y += s.spaceBefore;
     for (const line of lines) {
       if (y + lineH > layout.pageH - layout.marginBottom) newPage();
-      pdf.setFont("times", s.bold ? "bold" : s.italic ? "italic" : "normal");
+      pdf.setFont(font, s.bold ? "bold" : s.italic && font === "times" ? "italic" : "normal");
       pdf.setFontSize(s.size);
       pdf.text(line, leftMargin() + s.indent, y + s.size, { align: "left" });
       y += lineH;
@@ -121,7 +125,14 @@ export async function renderBookPdf(
 }
 
 /** Draws a preview of the first reconstructed page onto a canvas. */
-export function renderPreview(canvas: HTMLCanvasElement, blocks: Block[], layout: BookLayout, title: string) {
+export async function renderPreview(
+  canvas: HTMLCanvasElement,
+  blocks: Block[],
+  layout: BookLayout,
+  title: string,
+) {
+  const sample = title + " " + blocks.map((b) => ("text" in b ? b.text : "")).join(" ");
+  const family = await ensureCanvasFont(sample);
   const scale = Math.min(3, 700 / layout.pageW);
   canvas.width = Math.round(layout.pageW * scale);
   canvas.height = Math.round(layout.pageH * scale);
@@ -137,7 +148,7 @@ export function renderPreview(canvas: HTMLCanvasElement, blocks: Block[], layout
   let y = layout.marginTop * scale;
 
   const drawLines = (text: string, size: number, weight: string, indent = 0, prefix = "") => {
-    ctx.font = `${weight} ${size * scale}px Georgia, 'Times New Roman', serif`;
+    ctx.font = `${weight} ${size * scale}px ${family}`;
     const words = (prefix + text).split(/\s+/);
     let line = "";
     for (const word of words) {
@@ -162,7 +173,7 @@ export function renderPreview(canvas: HTMLCanvasElement, blocks: Block[], layout
     if (block.type === "pagebreak") continue;
     const s = styleFor(block, layout);
     y += s.spaceBefore * scale;
-    const weight = s.bold ? "bold" : s.italic ? "italic" : "normal";
+    const weight = s.bold ? "bold" : "normal";
     if (drawLines(block.text, s.size, weight, s.indent, block.type === "list" ? "• " : "")) return;
     y += layout.leading * 0.35 * scale;
   }
