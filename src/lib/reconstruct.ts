@@ -139,6 +139,14 @@ export async function renderPreview(
   const maxW = right - left;
   let y = layout.marginTop * scale;
 
+  if (layout.pageNumbers) {
+    ctx.font = `normal ${layout.bodySize * 0.8 * scale}px ${family}`;
+    ctx.textAlign = "right";
+    ctx.fillText("1", right, canvas.height - layout.marginBottom * 0.55 * scale);
+    ctx.textAlign = "left";
+  }
+
+
   const drawLines = (text: string, size: number, weight: string, indent = 0, prefix = "") => {
     ctx.font = `${weight} ${size * scale}px ${family}`;
     const words = (prefix + text).split(/\s+/);
