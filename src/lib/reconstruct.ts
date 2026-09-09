@@ -90,14 +90,6 @@ export async function renderBookPdf(
     y = layout.marginTop;
   };
 
-  // Title page
-  pdf.setFont(font, "bold");
-  pdf.setFontSize(layout.bodySize * 2.2);
-  pdf.text(pdf.splitTextToSize(meta.title, contentW()), layout.pageW / 2, layout.pageH * 0.38, {
-    align: "center",
-  });
-  newPage();
-
   for (const block of blocks) {
     if (block.type === "pagebreak") {
       if (y > layout.marginTop) newPage();
@@ -147,6 +139,14 @@ export async function renderPreview(
   const maxW = right - left;
   let y = layout.marginTop * scale;
 
+  if (layout.pageNumbers) {
+    ctx.font = `normal ${layout.bodySize * 0.8 * scale}px ${family}`;
+    ctx.textAlign = "right";
+    ctx.fillText("1", right, canvas.height - layout.marginBottom * 0.55 * scale);
+    ctx.textAlign = "left";
+  }
+
+
   const drawLines = (text: string, size: number, weight: string, indent = 0, prefix = "") => {
     ctx.font = `${weight} ${size * scale}px ${family}`;
     const words = (prefix + text).split(/\s+/);
@@ -167,14 +167,12 @@ export async function renderPreview(
     return y > canvas.height - layout.marginBottom * scale;
   };
 
-  if (drawLines(title, layout.bodySize * 1.7, "bold")) return;
-  y += layout.leading * scale;
   for (const block of blocks) {
     if (block.type === "pagebreak") continue;
     const s = styleFor(block, layout);
     y += s.spaceBefore * scale;
     const weight = s.bold ? "bold" : "normal";
     if (drawLines(block.text, s.size, weight, s.indent, block.type === "list" ? "• " : "")) return;
-    y += layout.leading * 0.35 * scale;
+    if (block.type === "paragraph" || block.type === "heading") y += layout.leading * 0.35 * scale;
   }
 }

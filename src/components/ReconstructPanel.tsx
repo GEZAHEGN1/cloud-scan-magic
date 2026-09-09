@@ -79,23 +79,26 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
     }
   }
 
-  async function exportPdf() {
+  async function exportFile(kind: "pdf" | "docx") {
     const use = blocks ?? (sourceText ? blocksFromText(sourceText) : null);
     if (!use) {
       toast.error("Nothing to export yet.");
       return;
     }
-    setBusy("Building the print-ready PDF…");
+    setBusy(kind === "pdf" ? "Building the print-ready PDF…" : "Building the Word file…");
     try {
-      const blob = await renderBookPdf(use, layout, { title });
+      const blob =
+        kind === "pdf"
+          ? await renderBookPdf(use, layout, { title })
+          : await (await import("@/lib/docx-export")).renderBookDocx(use, layout, { title });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${fileBase}-${trim.id}.pdf`;
+      a.download = `${fileBase}-${trim.id}.${kind}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not build the PDF");
+      toast.error(e instanceof Error ? e.message : "Could not build the file");
     } finally {
       setBusy(null);
     }
@@ -154,8 +157,11 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
         <Button size="sm" onClick={reconstruct} disabled={!!busy}>
           <Sparkles className="mr-2 h-4 w-4" /> {blocks ? "Rebuild again" : "Rebuild"}
         </Button>
-        <Button size="sm" variant="secondary" onClick={exportPdf} disabled={!!busy || !sourceText}>
-          <Download className="mr-2 h-4 w-4" /> Print-ready PDF
+        <Button size="sm" variant="secondary" onClick={() => exportFile("pdf")} disabled={!!busy || !sourceText}>
+          <Download className="mr-2 h-4 w-4" /> PDF
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => exportFile("docx")} disabled={!!busy || !sourceText}>
+          <Download className="mr-2 h-4 w-4" /> Word
         </Button>
       </div>
 
