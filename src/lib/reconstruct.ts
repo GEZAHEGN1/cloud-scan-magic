@@ -173,6 +173,6 @@ export async function renderPreview(
     y += s.spaceBefore * scale;
     const weight = s.bold ? "bold" : "normal";
     if (drawLines(block.text, s.size, weight, s.indent, block.type === "list" ? "• " : "")) return;
-    y += layout.leading * 0.35 * scale;
+    if (block.type === "paragraph" || block.type === "heading") y += layout.leading * 0.35 * scale;
   }
 }
