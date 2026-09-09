@@ -90,14 +90,6 @@ export async function renderBookPdf(
     y = layout.marginTop;
   };
 
-  // Title page
-  pdf.setFont(font, "bold");
-  pdf.setFontSize(layout.bodySize * 2.2);
-  pdf.text(pdf.splitTextToSize(meta.title, contentW()), layout.pageW / 2, layout.pageH * 0.38, {
-    align: "center",
-  });
-  newPage();
-
   for (const block of blocks) {
     if (block.type === "pagebreak") {
       if (y > layout.marginTop) newPage();
