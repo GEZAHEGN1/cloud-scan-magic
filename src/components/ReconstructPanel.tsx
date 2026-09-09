@@ -157,8 +157,11 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
         <Button size="sm" onClick={reconstruct} disabled={!!busy}>
           <Sparkles className="mr-2 h-4 w-4" /> {blocks ? "Rebuild again" : "Rebuild"}
         </Button>
-        <Button size="sm" variant="secondary" onClick={exportPdf} disabled={!!busy || !sourceText}>
-          <Download className="mr-2 h-4 w-4" /> Print-ready PDF
+        <Button size="sm" variant="secondary" onClick={() => exportFile("pdf")} disabled={!!busy || !sourceText}>
+          <Download className="mr-2 h-4 w-4" /> PDF
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => exportFile("docx")} disabled={!!busy || !sourceText}>
+          <Download className="mr-2 h-4 w-4" /> Word
         </Button>
       </div>
 
