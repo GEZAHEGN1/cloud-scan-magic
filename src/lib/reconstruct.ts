@@ -159,8 +159,6 @@ export async function renderPreview(
     return y > canvas.height - layout.marginBottom * scale;
   };
 
-  if (drawLines(title, layout.bodySize * 1.7, "bold")) return;
-  y += layout.leading * scale;
   for (const block of blocks) {
     if (block.type === "pagebreak") continue;
     const s = styleFor(block, layout);
