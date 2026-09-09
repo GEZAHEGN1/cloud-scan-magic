@@ -125,7 +125,14 @@ export async function renderBookPdf(
 }
 
 /** Draws a preview of the first reconstructed page onto a canvas. */
-export function renderPreview(canvas: HTMLCanvasElement, blocks: Block[], layout: BookLayout, title: string) {
+export async function renderPreview(
+  canvas: HTMLCanvasElement,
+  blocks: Block[],
+  layout: BookLayout,
+  title: string,
+) {
+  const sample = title + " " + blocks.map((b) => ("text" in b ? b.text : "")).join(" ");
+  const family = await ensureCanvasFont(sample);
   const scale = Math.min(3, 700 / layout.pageW);
   canvas.width = Math.round(layout.pageW * scale);
   canvas.height = Math.round(layout.pageH * scale);
