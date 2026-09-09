@@ -73,7 +73,7 @@ export async function renderBookPdf(
 
   const footer = () => {
     if (!layout.pageNumbers) return;
-    pdf.setFont("times", "normal");
+    pdf.setFont(font, "normal");
     pdf.setFontSize(layout.bodySize * 0.8);
     pdf.text(
       String(pageIndex + 1),
@@ -91,7 +91,7 @@ export async function renderBookPdf(
   };
 
   // Title page
-  pdf.setFont("times", "bold");
+  pdf.setFont(font, "bold");
   pdf.setFontSize(layout.bodySize * 2.2);
   pdf.text(pdf.splitTextToSize(meta.title, contentW()), layout.pageW / 2, layout.pageH * 0.38, {
     align: "center",
@@ -104,7 +104,7 @@ export async function renderBookPdf(
       continue;
     }
     const s = styleFor(block, layout);
-    pdf.setFont("times", s.bold ? "bold" : s.italic ? "italic" : "normal");
+    pdf.setFont(font, s.bold ? "bold" : s.italic ? "italic" : "normal");
     pdf.setFontSize(s.size);
     const width = contentW() - s.indent;
     const prefix = block.type === "list" ? "• " : "";
@@ -113,7 +113,7 @@ export async function renderBookPdf(
     y += s.spaceBefore;
     for (const line of lines) {
       if (y + lineH > layout.pageH - layout.marginBottom) newPage();
-      pdf.setFont("times", s.bold ? "bold" : s.italic ? "italic" : "normal");
+      pdf.setFont(font, s.bold ? "bold" : s.italic ? "italic" : "normal");
       pdf.setFontSize(s.size);
       pdf.text(line, leftMargin() + s.indent, y + s.size, { align: "left" });
       y += lineH;
