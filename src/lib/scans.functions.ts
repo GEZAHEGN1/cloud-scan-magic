@@ -102,10 +102,13 @@ export const analyzeLayout = createServerFn({ method: "POST" })
                       properties: {
                         type: {
                           type: "string",
-                          enum: ["heading", "paragraph", "list", "quote", "pagebreak"],
+                          enum: ["heading", "paragraph", "list", "quote", "toc", "pagebreak"],
                         },
                         level: { type: "number", enum: [1, 2, 3] },
                         text: { type: "string" },
+                        page: { type: "string" },
+                        align: { type: "string", enum: ["left", "center", "right"] },
+                        bold: { type: "boolean" },
                       },
                       required: ["type", "text"],
                       additionalProperties: false,
