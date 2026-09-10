@@ -62,13 +62,26 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
     try {
       const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
       const mapped: Block[] = got.length
-        ? got.map((b) =>
-            b.type === "pagebreak"
-              ? { type: "pagebreak" }
-              : b.type === "heading"
-                ? { type: "heading", level: (b.level ?? 2) as 1 | 2 | 3, text: b.text }
-                : { type: b.type, text: b.text },
-          )
+        ? got.map((b): Block => {
+            if (b.type === "pagebreak") return { type: "pagebreak" };
+            if (b.type === "heading")
+              return {
+                type: "heading",
+                level: (b.level ?? 2) as 1 | 2 | 3,
+                text: b.text,
+                align: b.align ?? "center",
+                bold: true,
+              };
+            if (b.type === "toc")
+              return {
+                type: "toc",
+                text: b.text,
+                page: b.page ?? "",
+                level: (b.level ?? 2) as 1 | 2 | 3,
+                bold: b.bold ?? false,
+              };
+            return { type: b.type, text: b.text, align: b.align ?? "left", bold: b.bold ?? false };
+          })
         : blocksFromText(sourceText);
       setBlocks(mapped);
       toast.success("Document rebuilt");

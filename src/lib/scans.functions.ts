@@ -50,9 +50,12 @@ export const recognizeText = createServerFn({ method: "POST" })
 const blockSchema = z.object({
   blocks: z.array(
     z.object({
-      type: z.enum(["heading", "paragraph", "list", "quote", "pagebreak"]),
+      type: z.enum(["heading", "paragraph", "list", "quote", "toc", "pagebreak"]),
       level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       text: z.string().default(""),
+      page: z.string().optional(),
+      align: z.enum(["left", "center", "right"]).optional(),
+      bold: z.boolean().optional(),
     }),
   ),
 });
@@ -79,7 +82,7 @@ export const analyzeLayout = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              "You restructure transcribed book pages for typesetting. Keep the wording exactly as given — never summarise, translate or rewrite. Classify each block: chapter/section titles as heading (level 1 for chapter openers, 2 for sections, 3 for sub-sections), body text as paragraph, bulleted or numbered items as list (one block per item, without the bullet marker), indented or attributed excerpts as quote. Insert a pagebreak block with empty text before each chapter opener. Merge lines broken mid-sentence and repair hyphenated line breaks. Drop running headers, footers and page numbers.",
+              "You restructure transcribed book pages for typesetting, reproducing the ORIGINAL page layout as closely as possible. Keep the wording exactly as given — never summarise, translate or rewrite. Classify each block: chapter/section titles as heading (level 1 for chapter openers, 2 for sections, 3 for sub-sections), body text as paragraph, bulleted or numbered items as list (one block per item, without the bullet marker), indented or attributed excerpts as quote. A contents/index line that ends in a page number is type 'toc': put the entry label in text, the page number in page, and level 1 for main entries, 2 for sub-entries. Preserve emphasis: wrap any bold words or phrases in **double asterisks**, including bold words inside a paragraph, and set bold:true when a whole block is bold. Preserve alignment with align: 'center' for centred titles and lines, 'right' for right-aligned lines, otherwise 'left'; headings that were centred on the page must keep align 'center'. Insert a pagebreak block with empty text before each chapter opener. Merge lines broken mid-sentence and repair hyphenated line breaks. Drop running headers, footers and printed folio numbers that are not part of a contents entry.",
           },
           { role: "user", content: data.text },
         ],
@@ -99,10 +102,13 @@ export const analyzeLayout = createServerFn({ method: "POST" })
                       properties: {
                         type: {
                           type: "string",
-                          enum: ["heading", "paragraph", "list", "quote", "pagebreak"],
+                          enum: ["heading", "paragraph", "list", "quote", "toc", "pagebreak"],
                         },
                         level: { type: "number", enum: [1, 2, 3] },
                         text: { type: "string" },
+                        page: { type: "string" },
+                        align: { type: "string", enum: ["left", "center", "right"] },
+                        bold: { type: "boolean" },
                       },
                       required: ["type", "text"],
                       additionalProperties: false,
