@@ -26,7 +26,7 @@ export async function renderBookDocx(
   const dxa = (pt: number) => Math.round(pt * 20);
   const body = layout.bodySize * 2; // docx half-points
 
-  const runs = (text: string, size: number, opts: { bold?: boolean; italics?: boolean } = {}) =>
+  const runs = (text: string, size: number, opts: { bold?: boolean | undefined; italics?: boolean | undefined } = {}) =>
     parseRuns(text, opts.bold ?? false).map(
       (r) => new TextRun({ text: r.text, bold: r.bold, italics: opts.italics ?? false, size }),
     );
