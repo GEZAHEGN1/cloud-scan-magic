@@ -50,9 +50,12 @@ export const recognizeText = createServerFn({ method: "POST" })
 const blockSchema = z.object({
   blocks: z.array(
     z.object({
-      type: z.enum(["heading", "paragraph", "list", "quote", "pagebreak"]),
+      type: z.enum(["heading", "paragraph", "list", "quote", "toc", "pagebreak"]),
       level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       text: z.string().default(""),
+      page: z.string().optional(),
+      align: z.enum(["left", "center", "right"]).optional(),
+      bold: z.boolean().optional(),
     }),
   ),
 });
