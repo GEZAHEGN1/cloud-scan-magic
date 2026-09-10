@@ -1,5 +1,5 @@
 import type { BookLayout } from "./booksizes";
-import type { Block } from "./reconstruct";
+import { parseRuns, type Block } from "./reconstruct";
 
 /**
  * Rebuilds the recognised document as a Word file at the chosen finished
