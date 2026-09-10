@@ -46,7 +46,7 @@ export function blocksFromText(text: string): Block[] {
         out.push({
           type: "toc",
           text: label,
-          page: toc[2],
+          page: toc[2] ?? "",
           level: /^[\d\u1369-\u137C]+[.)]/.test(label) ? 1 : 2,
         });
         continue;
