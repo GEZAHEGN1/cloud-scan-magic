@@ -389,13 +389,16 @@ export async function renderPreview(
     }
 
     const prefix = block.type === "list" ? "• " : "";
-    const lines = wrapRuns(parseRuns(prefix + block.text, s.bold), maxW - s.indent * scale, measure);
-    for (const line of lines) {
+    const fi = (s.align === "left" ? (s.firstIndent ?? 0) : 0) * scale;
+    const avail = maxW - s.indent * scale - fi;
+    const lines = wrapRuns(parseRuns(prefix + block.text, s.bold), avail, measure);
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li]!;
       if (y + lineH > bottom) return;
       const w = lineWidth(line, measure);
-      let x = left + s.indent * scale;
-      if (s.align === "center") x += (maxW - s.indent * scale - w) / 2;
-      else if (s.align === "right") x += maxW - s.indent * scale - w;
+      let x = left + s.indent * scale + (li === 0 ? fi : 0);
+      if (s.align === "center") x += (avail - w) / 2;
+      else if (s.align === "right") x += avail - w;
       for (const run of line) {
         ctx.font = `${run.bold ? "bold" : s.italic ? "italic" : "normal"} ${px}px ${family}`;
         ctx.fillText(run.text, x, y);
