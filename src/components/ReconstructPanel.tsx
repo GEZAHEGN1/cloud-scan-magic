@@ -17,6 +17,47 @@ type Props = {
   beforeUrl: string | undefined;
 };
 
+type AiBlock = {
+  type: "heading" | "paragraph" | "list" | "quote" | "toc" | "pagebreak";
+  level?: 1 | 2 | 3 | undefined;
+  text: string;
+  page?: string | undefined;
+  align?: "left" | "center" | "right" | undefined;
+  bold?: boolean | undefined;
+  sizeScale?: number | undefined;
+  indent?: boolean | undefined;
+  spaceBefore?: number | undefined;
+};
+
+/** Turns one AI-described piece of the page into a drawable block. */
+function toBlock(b: AiBlock): Block {
+  if (b.type === "pagebreak") return { type: "pagebreak" };
+  const metrics = {
+    sizeScale: b.sizeScale,
+    indent: b.indent,
+    spaceBefore: b.spaceBefore,
+  };
+  if (b.type === "heading")
+    return {
+      type: "heading",
+      level: (b.level ?? 2) as 1 | 2 | 3,
+      text: b.text,
+      align: b.align ?? "center",
+      bold: b.bold ?? true,
+      ...metrics,
+    };
+  if (b.type === "toc")
+    return {
+      type: "toc",
+      text: b.text,
+      page: b.page ?? "",
+      level: (b.level ?? 2) as 1 | 2 | 3,
+      bold: b.bold ?? false,
+      ...metrics,
+    };
+  return { type: b.type, text: b.text, align: b.align ?? "left", bold: b.bold ?? false, ...metrics };
+}
+
 /**
  * Rebuilds the recognised document as a print-ready book at a chosen trim
  * size, with a before/after comparison of the original photo and the
