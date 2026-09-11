@@ -55,40 +55,55 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, sourceText, trimId, bodySize, pageNumbers, title]);
 
+  const images = (pageImages ?? []).filter(Boolean);
+
   async function reconstruct() {
-    if (!sourceText) {
-      toast.error("Read the text of at least one page first.");
+    if (!sourceText && !images.length) {
+      toast.error("Add a page first.");
       return;
     }
-    setBusy("Reconstructing the document…");
     try {
-      const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
-      const mapped: Block[] = got.length
-        ? got.map((b): Block => {
-            if (b.type === "pagebreak") return { type: "pagebreak" };
-            if (b.type === "heading")
-              return {
-                type: "heading",
-                level: (b.level ?? 2) as 1 | 2 | 3,
-                text: b.text,
-                align: b.align ?? "center",
-                bold: true,
-              };
-            if (b.type === "toc")
-              return {
-                type: "toc",
-                text: b.text,
-                page: b.page ?? "",
-                level: (b.level ?? 2) as 1 | 2 | 3,
-                bold: b.bold ?? false,
-              };
-            return { type: b.type, text: b.text, align: b.align ?? "left", bold: b.bold ?? false };
-          })
-        : blocksFromText(sourceText);
+      let mapped: Block[] = [];
+
+      if (images.length) {
+        // Look at each photographed page so weight, size, alignment,
+        // indentation and spacing come from the original, not from guesswork.
+        for (let i = 0; i < images.length; i++) {
+          setBusy(
+            images.length > 1
+              ? `Reading the layout of page ${i + 1} of ${images.length}…`
+              : "Reading the original layout…",
+          );
+          const text = pageTexts[i]?.trim();
+          const { blocks: got } = await analyzePageLayout({
+            data: { imageUrl: images[i]!, ...(text ? { text } : {}) },
+          });
+          if (i > 0 && got.length) mapped.push({ type: "pagebreak" });
+          mapped.push(...got.map(toBlock));
+        }
+      }
+
+      if (!mapped.length && sourceText) {
+        setBusy("Rebuilding from the recognised text…");
+        const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
+        mapped = got.length ? got.map(toBlock) : blocksFromText(sourceText);
+      }
+
+      if (!mapped.length) {
+        toast.error("Could not read the layout of this page.");
+        return;
+      }
       setBlocks(mapped);
       toast.success("Document rebuilt");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not rebuild the document");
+      if (sourceText) {
+        setBlocks(blocksFromText(sourceText));
+        toast.error(
+          e instanceof Error ? `${e.message} Rebuilt from the text instead.` : "Rebuilt from the text instead.",
+        );
+      } else {
+        toast.error(e instanceof Error ? e.message : "Could not rebuild the document");
+      }
     } finally {
       setBusy(null);
     }
