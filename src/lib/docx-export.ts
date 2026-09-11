@@ -34,6 +34,18 @@ export async function renderBookDocx(
   const alignOf = (a?: string) =>
     a === "center" ? AlignmentType.CENTER : a === "right" ? AlignmentType.RIGHT : AlignmentType.LEFT;
 
+  /** Size measured on the original page, when it was seen. */
+  const sizeOf = (block: Block, fallback: number) =>
+    "sizeScale" in block && typeof block.sizeScale === "number" && block.sizeScale > 0
+      ? Math.round(body * Math.max(0.6, Math.min(2.6, block.sizeScale)))
+      : fallback;
+  const beforeOf = (block: Block, fallback: number) =>
+    "spaceBefore" in block && typeof block.spaceBefore === "number"
+      ? dxa(layout.leading * Math.max(0, Math.min(4, block.spaceBefore)))
+      : dxa(fallback);
+  const firstLineOf = (block: Block) =>
+    "indent" in block && block.indent ? { firstLine: dxa(layout.bodySize * 1.4) } : {};
+
   const children = blocks.map((block) => {
     if (block.type === "pagebreak") return new Paragraph({ children: [new PageBreak()] });
     if (block.type === "heading") {
@@ -45,10 +57,10 @@ export async function renderBookDocx(
               ? HeadingLevel.HEADING_2
               : HeadingLevel.HEADING_3,
         alignment: alignOf(block.align ?? "center"),
-        spacing: { before: dxa(layout.leading), after: dxa(layout.leading * 0.4) },
+        spacing: { before: beforeOf(block, layout.leading), after: dxa(layout.leading * 0.4) },
         children: runs(
           block.text,
-          Math.round(body * (block.level === 1 ? 1.7 : block.level === 2 ? 1.35 : 1.15)),
+          sizeOf(block, Math.round(body * (block.level === 1 ? 1.7 : block.level === 2 ? 1.35 : 1.15))),
           { bold: true },
         ),
       });

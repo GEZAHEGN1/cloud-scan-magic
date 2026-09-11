@@ -453,6 +453,7 @@ function ScanPage() {
                   title="Scan"
                   fileBase="scan"
                   pageTexts={pages.map((p) => p.text ?? "")}
+                  pageImages={pages.map((p) => p.preview)}
                   beforeUrl={pages[0]?.preview}
                 />
               </div>

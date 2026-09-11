@@ -3,12 +3,22 @@ import { ensureCanvasFont, ensurePdfFont } from "./fonts";
 
 export type Align = "left" | "center" | "right";
 
+/** Measurements taken from the original page, when it was seen. */
+export type Metrics = {
+  /** Text height relative to the body text (1 = body). */
+  sizeScale?: number | undefined;
+  /** First line is indented. */
+  indent?: boolean | undefined;
+  /** Blank space above the block, in body lines. */
+  spaceBefore?: number | undefined;
+};
+
 export type Block =
-  | { type: "heading"; level: 1 | 2 | 3; text: string; align?: Align; bold?: boolean }
-  | { type: "paragraph"; text: string; align?: Align; bold?: boolean }
-  | { type: "list"; text: string; align?: Align; bold?: boolean }
-  | { type: "quote"; text: string; align?: Align; bold?: boolean }
-  | { type: "toc"; text: string; page?: string; level?: 1 | 2 | 3; bold?: boolean }
+  | ({ type: "heading"; level: 1 | 2 | 3; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "paragraph"; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "list"; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "quote"; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "toc"; text: string; page?: string; level?: 1 | 2 | 3; bold?: boolean } & Metrics)
   | { type: "pagebreak" };
 
 /** A stretch of text with one weight, produced from **bold** markers. */
@@ -73,9 +83,28 @@ type Styled = {
   spaceAfter: number;
   indent: number;
   align: Align;
+  /** Extra indent applied to the first line only, in points. */
+  firstIndent?: number;
 };
 
+/**
+ * Style of a block, starting from sensible book defaults and then applying
+ * whatever was actually measured on the original page.
+ */
 function styleFor(block: Block, layout: BookLayout): Styled {
+  const base = baseStyleFor(block, layout);
+  if (block.type === "pagebreak") return base;
+  if (typeof block.sizeScale === "number" && block.sizeScale > 0) {
+    base.size = layout.bodySize * Math.max(0.6, Math.min(2.6, block.sizeScale));
+  }
+  if (typeof block.spaceBefore === "number") {
+    base.spaceBefore = layout.leading * Math.max(0, Math.min(4, block.spaceBefore));
+  }
+  if (block.indent) base.firstIndent = layout.bodySize * 1.4;
+  return base;
+}
+
+function baseStyleFor(block: Block, layout: BookLayout): Styled {
   switch (block.type) {
     case "heading":
       return {
@@ -262,12 +291,13 @@ export async function renderBookPdf(
 
     const prefix = block.type === "list" ? "• " : "";
     const runs = parseRuns(prefix + block.text, s.bold);
-    const maxW = contentW() - s.indent;
+    const fi = s.align === "left" ? (s.firstIndent ?? 0) : 0;
+    const maxW = contentW() - s.indent - fi;
     const lines = wrapRuns(runs, maxW, measure);
-    for (const line of lines) {
+    lines.forEach((line, li) => {
       if (y + lineH > layout.pageH - layout.marginBottom) newPage();
       const w = lineWidth(line, measure);
-      let x = leftMargin() + s.indent;
+      let x = leftMargin() + s.indent + (li === 0 ? fi : 0);
       if (s.align === "center") x += (maxW - w) / 2;
       else if (s.align === "right") x += maxW - w;
       for (const run of line) {
@@ -276,7 +306,7 @@ export async function renderBookPdf(
         x += pdf.getTextWidth(run.text);
       }
       y += lineH;
-    }
+    });
     y += s.spaceAfter;
   }
   footer();
@@ -359,13 +389,16 @@ export async function renderPreview(
     }
 
     const prefix = block.type === "list" ? "• " : "";
-    const lines = wrapRuns(parseRuns(prefix + block.text, s.bold), maxW - s.indent * scale, measure);
-    for (const line of lines) {
+    const fi = (s.align === "left" ? (s.firstIndent ?? 0) : 0) * scale;
+    const avail = maxW - s.indent * scale - fi;
+    const lines = wrapRuns(parseRuns(prefix + block.text, s.bold), avail, measure);
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li]!;
       if (y + lineH > bottom) return;
       const w = lineWidth(line, measure);
-      let x = left + s.indent * scale;
-      if (s.align === "center") x += (maxW - s.indent * scale - w) / 2;
-      else if (s.align === "right") x += maxW - s.indent * scale - w;
+      let x = left + s.indent * scale + (li === 0 ? fi : 0);
+      if (s.align === "center") x += (avail - w) / 2;
+      else if (s.align === "right") x += avail - w;
       for (const run of line) {
         ctx.font = `${run.bold ? "bold" : s.italic ? "italic" : "normal"} ${px}px ${family}`;
         ctx.fillText(run.text, x, y);

@@ -4,23 +4,66 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TRIM_SIZES, buildLayout, type TrimSize } from "@/lib/booksizes";
 import { blocksFromText, renderBookPdf, renderPreview, type Block } from "@/lib/reconstruct";
-import { analyzeLayout } from "@/lib/scans.functions";
+import { analyzeLayout, analyzePageLayout } from "@/lib/scans.functions";
 
 type Props = {
   title: string;
   fileBase: string;
   /** Recognised text of each page, in order. */
   pageTexts: string[];
+  /** Image of each page, in order — used to copy the original layout. */
+  pageImages?: string[];
   /** First scanned page image, shown as the "before" side. */
   beforeUrl: string | undefined;
 };
+
+type AiBlock = {
+  type: "heading" | "paragraph" | "list" | "quote" | "toc" | "pagebreak";
+  level?: 1 | 2 | 3 | undefined;
+  text: string;
+  page?: string | undefined;
+  align?: "left" | "center" | "right" | undefined;
+  bold?: boolean | undefined;
+  sizeScale?: number | undefined;
+  indent?: boolean | undefined;
+  spaceBefore?: number | undefined;
+};
+
+/** Turns one AI-described piece of the page into a drawable block. */
+function toBlock(b: AiBlock): Block {
+  if (b.type === "pagebreak") return { type: "pagebreak" };
+  const metrics = {
+    sizeScale: b.sizeScale,
+    indent: b.indent,
+    spaceBefore: b.spaceBefore,
+  };
+  if (b.type === "heading")
+    return {
+      type: "heading",
+      level: (b.level ?? 2) as 1 | 2 | 3,
+      text: b.text,
+      align: b.align ?? "center",
+      bold: b.bold ?? true,
+      ...metrics,
+    };
+  if (b.type === "toc")
+    return {
+      type: "toc",
+      text: b.text,
+      page: b.page ?? "",
+      level: (b.level ?? 2) as 1 | 2 | 3,
+      bold: b.bold ?? false,
+      ...metrics,
+    };
+  return { type: b.type, text: b.text, align: b.align ?? "left", bold: b.bold ?? false, ...metrics };
+}
 
 /**
  * Rebuilds the recognised document as a print-ready book at a chosen trim
  * size, with a before/after comparison of the original photo and the
  * reconstructed page.
  */
-export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Props) {
+export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, beforeUrl }: Props) {
   const [trimId, setTrimId] = useState<string>("kdp-6x9");
   const [bodySize, setBodySize] = useState(11);
   const [pageNumbers, setPageNumbers] = useState(true);
@@ -53,40 +96,55 @@ export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, sourceText, trimId, bodySize, pageNumbers, title]);
 
+  const images = (pageImages ?? []).filter(Boolean);
+
   async function reconstruct() {
-    if (!sourceText) {
-      toast.error("Read the text of at least one page first.");
+    if (!sourceText && !images.length) {
+      toast.error("Add a page first.");
       return;
     }
-    setBusy("Reconstructing the document…");
     try {
-      const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
-      const mapped: Block[] = got.length
-        ? got.map((b): Block => {
-            if (b.type === "pagebreak") return { type: "pagebreak" };
-            if (b.type === "heading")
-              return {
-                type: "heading",
-                level: (b.level ?? 2) as 1 | 2 | 3,
-                text: b.text,
-                align: b.align ?? "center",
-                bold: true,
-              };
-            if (b.type === "toc")
-              return {
-                type: "toc",
-                text: b.text,
-                page: b.page ?? "",
-                level: (b.level ?? 2) as 1 | 2 | 3,
-                bold: b.bold ?? false,
-              };
-            return { type: b.type, text: b.text, align: b.align ?? "left", bold: b.bold ?? false };
-          })
-        : blocksFromText(sourceText);
+      let mapped: Block[] = [];
+
+      if (images.length) {
+        // Look at each photographed page so weight, size, alignment,
+        // indentation and spacing come from the original, not from guesswork.
+        for (let i = 0; i < images.length; i++) {
+          setBusy(
+            images.length > 1
+              ? `Reading the layout of page ${i + 1} of ${images.length}…`
+              : "Reading the original layout…",
+          );
+          const text = pageTexts[i]?.trim();
+          const { blocks: got } = await analyzePageLayout({
+            data: { imageUrl: images[i]!, ...(text ? { text } : {}) },
+          });
+          if (i > 0 && got.length) mapped.push({ type: "pagebreak" });
+          mapped.push(...got.map(toBlock));
+        }
+      }
+
+      if (!mapped.length && sourceText) {
+        setBusy("Rebuilding from the recognised text…");
+        const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
+        mapped = got.length ? got.map(toBlock) : blocksFromText(sourceText);
+      }
+
+      if (!mapped.length) {
+        toast.error("Could not read the layout of this page.");
+        return;
+      }
       setBlocks(mapped);
       toast.success("Document rebuilt");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not rebuild the document");
+      if (sourceText) {
+        setBlocks(blocksFromText(sourceText));
+        toast.error(
+          e instanceof Error ? `${e.message} Rebuilt from the text instead.` : "Rebuilt from the text instead.",
+        );
+      } else {
+        toast.error(e instanceof Error ? e.message : "Could not rebuild the document");
+      }
     } finally {
       setBusy(null);
     }
