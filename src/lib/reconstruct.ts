@@ -85,7 +85,24 @@ type Styled = {
   align: Align;
 };
 
+/**
+ * Style of a block, starting from sensible book defaults and then applying
+ * whatever was actually measured on the original page.
+ */
 function styleFor(block: Block, layout: BookLayout): Styled {
+  const base = baseStyleFor(block, layout);
+  if (block.type === "pagebreak") return base;
+  if (typeof block.sizeScale === "number" && block.sizeScale > 0) {
+    base.size = layout.bodySize * Math.max(0.6, Math.min(2.6, block.sizeScale));
+  }
+  if (typeof block.spaceBefore === "number") {
+    base.spaceBefore = layout.leading * Math.max(0, Math.min(4, block.spaceBefore));
+  }
+  if (block.indent) base.firstIndent = layout.bodySize * 1.4;
+  return base;
+}
+
+function baseStyleFor(block: Block, layout: BookLayout): Styled {
   switch (block.type) {
     case "heading":
       return {
