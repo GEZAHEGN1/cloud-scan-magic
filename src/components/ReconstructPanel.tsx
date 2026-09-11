@@ -22,7 +22,7 @@ type Props = {
  * size, with a before/after comparison of the original photo and the
  * reconstructed page.
  */
-export function ReconstructPanel({ title, fileBase, pageTexts, beforeUrl }: Props) {
+export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, beforeUrl }: Props) {
   const [trimId, setTrimId] = useState<string>("kdp-6x9");
   const [bodySize, setBodySize] = useState(11);
   const [pageNumbers, setPageNumbers] = useState(true);
