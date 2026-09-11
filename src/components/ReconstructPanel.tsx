@@ -4,13 +4,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TRIM_SIZES, buildLayout, type TrimSize } from "@/lib/booksizes";
 import { blocksFromText, renderBookPdf, renderPreview, type Block } from "@/lib/reconstruct";
-import { analyzeLayout } from "@/lib/scans.functions";
+import { analyzeLayout, analyzePageLayout } from "@/lib/scans.functions";
 
 type Props = {
   title: string;
   fileBase: string;
   /** Recognised text of each page, in order. */
   pageTexts: string[];
+  /** Image of each page, in order — used to copy the original layout. */
+  pageImages?: string[];
   /** First scanned page image, shown as the "before" side. */
   beforeUrl: string | undefined;
 };
