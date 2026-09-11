@@ -185,64 +185,15 @@ export const analyzeLayout = createServerFn({ method: "POST" })
       body: JSON.stringify({
         model: "google/gemini-3.7-flash",
         messages: [
-          {
-            role: "system",
-            content:
-              "You restructure transcribed book pages for typesetting, reproducing the ORIGINAL page layout as closely as possible. Keep the wording exactly as given — never summarise, translate or rewrite. Classify each block: chapter/section titles as heading (level 1 for chapter openers, 2 for sections, 3 for sub-sections), body text as paragraph, bulleted or numbered items as list (one block per item, without the bullet marker), indented or attributed excerpts as quote. A contents/index line that ends in a page number is type 'toc': put the entry label in text, the page number in page, and level 1 for main entries, 2 for sub-entries. Preserve emphasis: wrap any bold words or phrases in **double asterisks**, including bold words inside a paragraph, and set bold:true when a whole block is bold. Preserve alignment with align: 'center' for centred titles and lines, 'right' for right-aligned lines, otherwise 'left'; headings that were centred on the page must keep align 'center'. Insert a pagebreak block with empty text before each chapter opener. Merge lines broken mid-sentence and repair hyphenated line breaks. Drop running headers, footers and printed folio numbers that are not part of a contents entry.",
-          },
+          { role: "system", content: LAYOUT_RULES },
           { role: "user", content: data.text },
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "emit_layout",
-              description: "Return the structured document blocks in reading order.",
-              parameters: {
-                type: "object",
-                properties: {
-                  blocks: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        type: {
-                          type: "string",
-                          enum: ["heading", "paragraph", "list", "quote", "toc", "pagebreak"],
-                        },
-                        level: { type: "number", enum: [1, 2, 3] },
-                        text: { type: "string" },
-                        page: { type: "string" },
-                        align: { type: "string", enum: ["left", "center", "right"] },
-                        bold: { type: "boolean" },
-                      },
-                      required: ["type", "text"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["blocks"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
+        tools: [layoutTool],
         tool_choice: { type: "function", function: { name: "emit_layout" } },
       }),
     });
 
     const body = await res.text();
-    if (!res.ok) {
-      if (res.status === 429) throw new Error("Too many requests right now. Try again in a moment.");
-      if (res.status === 402) throw new Error("AI credits are used up. Add credits to keep reconstructing.");
-      throw new Error(`Layout analysis failed (${res.status}): ${body.slice(0, 200)}`);
-    }
-
-    const json = JSON.parse(body) as {
-      choices?: { message?: { tool_calls?: { function?: { arguments?: string } }[] } }[];
-    };
-    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!args) return { blocks: [] };
-    const parsed = blockSchema.safeParse(JSON.parse(args));
-    return { blocks: parsed.success ? parsed.data.blocks : [] };
+    if (!res.ok) throw layoutError(res.status, body);
+    return parseLayoutResponse(body);
   });
