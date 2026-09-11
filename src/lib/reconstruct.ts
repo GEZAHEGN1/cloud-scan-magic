@@ -83,6 +83,8 @@ type Styled = {
   spaceAfter: number;
   indent: number;
   align: Align;
+  /** Extra indent applied to the first line only, in points. */
+  firstIndent?: number;
 };
 
 /**
