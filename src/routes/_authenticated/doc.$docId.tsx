@@ -233,6 +233,7 @@ function DocPage() {
             title={title ?? data.doc.title}
             fileBase={fileBase}
             pageTexts={data.pages.map((p) => p.ocr_text ?? "")}
+            pageImages={data.pages.map((p) => p.url)}
             beforeUrl={data.pages[0]?.url}
           />
 
