@@ -306,7 +306,7 @@ export async function renderBookPdf(
         x += pdf.getTextWidth(run.text);
       }
       y += lineH;
-    }
+    });
     y += s.spaceAfter;
   }
   footer();
