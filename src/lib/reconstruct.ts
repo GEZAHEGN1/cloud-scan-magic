@@ -3,12 +3,22 @@ import { ensureCanvasFont, ensurePdfFont } from "./fonts";
 
 export type Align = "left" | "center" | "right";
 
+/** Measurements taken from the original page, when it was seen. */
+export type Metrics = {
+  /** Text height relative to the body text (1 = body). */
+  sizeScale?: number | undefined;
+  /** First line is indented. */
+  indent?: boolean | undefined;
+  /** Blank space above the block, in body lines. */
+  spaceBefore?: number | undefined;
+};
+
 export type Block =
-  | { type: "heading"; level: 1 | 2 | 3; text: string; align?: Align; bold?: boolean }
-  | { type: "paragraph"; text: string; align?: Align; bold?: boolean }
-  | { type: "list"; text: string; align?: Align; bold?: boolean }
-  | { type: "quote"; text: string; align?: Align; bold?: boolean }
-  | { type: "toc"; text: string; page?: string; level?: 1 | 2 | 3; bold?: boolean }
+  | ({ type: "heading"; level: 1 | 2 | 3; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "paragraph"; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "list"; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "quote"; text: string; align?: Align; bold?: boolean } & Metrics)
+  | ({ type: "toc"; text: string; page?: string; level?: 1 | 2 | 3; bold?: boolean } & Metrics)
   | { type: "pagebreak" };
 
 /** A stretch of text with one weight, produced from **bold** markers. */
