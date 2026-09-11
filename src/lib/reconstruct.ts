@@ -291,12 +291,13 @@ export async function renderBookPdf(
 
     const prefix = block.type === "list" ? "• " : "";
     const runs = parseRuns(prefix + block.text, s.bold);
-    const maxW = contentW() - s.indent;
+    const fi = s.align === "left" ? (s.firstIndent ?? 0) : 0;
+    const maxW = contentW() - s.indent - fi;
     const lines = wrapRuns(runs, maxW, measure);
-    for (const line of lines) {
+    lines.forEach((line, li) => {
       if (y + lineH > layout.pageH - layout.marginBottom) newPage();
       const w = lineWidth(line, measure);
-      let x = leftMargin() + s.indent;
+      let x = leftMargin() + s.indent + (li === 0 ? fi : 0);
       if (s.align === "center") x += (maxW - w) / 2;
       else if (s.align === "right") x += maxW - w;
       for (const run of line) {
