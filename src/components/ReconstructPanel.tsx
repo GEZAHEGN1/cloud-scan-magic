@@ -73,6 +73,16 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   const [selectedPage, setSelectedPage] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inputSignature = JSON.stringify([pageImages, pageTexts, beforeUrl]);
+  const previousInput = useRef(inputSignature);
+
+  useEffect(() => {
+    if (previousInput.current === inputSignature) return;
+    previousInput.current = inputSignature;
+    setBlocks(null);
+    setPageLayouts(null);
+    setLayoutSources(null);
+  }, [inputSignature]);
 
   const trim: TrimSize = TRIM_SIZES.find((t) => t.id === trimId) ?? TRIM_SIZES[3]!;
   const sourceText = pageTexts.filter(Boolean).join("\n\n");
@@ -308,7 +318,7 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
           <p className="text-xs text-muted-foreground">{guessed ? "Detected on this page" : "Inferred from text only"}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground">
             <span>{pageLayouts[activePage].filter((b) => b.type === "heading").length} headings</span>
-            <span>{pageLayouts[activePage].filter((b) => b.type !== "pagebreak" && "bold" in b && (b.bold || b.text.includes("**"))).length} bold blocks</span>
+            <span>{pageLayouts[activePage].filter((b) => b.type !== "pagebreak" && "bold" in b && (b.bold || b.text.includes("**"))).length} with bold text</span>
             <span>{pageLayouts[activePage].filter((b) => b.type !== "pagebreak" && "align" in b && b.align === "center").length} centered blocks</span>
           </div>
         </div>

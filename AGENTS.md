@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep reconstructed layouts grouped by source page and flatten with page breaks only for export, so comparisons show the matching original and reconstructed page.

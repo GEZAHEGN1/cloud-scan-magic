@@ -18,6 +18,8 @@ export const Route = createFileRoute("/")({
         content:
           "Auto edge crop, shadow removal, curved page flattening, text recognition and PDF export — right in your phone browser.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,

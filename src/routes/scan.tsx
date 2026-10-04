@@ -37,6 +37,8 @@ export const Route = createFileRoute("/scan")({
       { name: "description", content: "Capture a page, crop the edges, flatten the curve and save it." },
       { property: "og:title", content: "New scan — Flatlay" },
       { property: "og:description", content: "Capture a page, crop the edges, flatten the curve and save it." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ScanPage,

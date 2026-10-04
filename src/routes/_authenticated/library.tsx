@@ -11,6 +11,8 @@ export const Route = createFileRoute("/_authenticated/library")({
       { name: "description", content: "All the documents and books you have scanned, ready to open or share." },
       { property: "og:title", content: "My scans — Flatlay" },
       { property: "og:description", content: "All the documents and books you have scanned." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: LibraryPage,

@@ -14,6 +14,8 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Sign in to Flatlay to scan documents and keep your library of scans." },
       { property: "og:title", content: "Sign in — Flatlay scanner" },
       { property: "og:description", content: "Sign in to scan documents and keep your library of scans." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AuthPage,
