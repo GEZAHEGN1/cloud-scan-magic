@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Download, Loader2, Sparkles } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Download, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TRIM_SIZES, buildLayout, type TrimSize } from "@/lib/booksizes";
@@ -13,7 +13,7 @@ type Props = {
   pageTexts: string[];
   /** Image of each page, in order — used to copy the original layout. */
   pageImages?: string[];
-  /** First scanned page image, shown as the "before" side. */
+  /** Fallback image when the first page has no image in pageImages. */
   beforeUrl: string | undefined;
 };
 
@@ -68,6 +68,9 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   const [bodySize, setBodySize] = useState(11);
   const [pageNumbers, setPageNumbers] = useState(true);
   const [blocks, setBlocks] = useState<Block[] | null>(null);
+  const [pageLayouts, setPageLayouts] = useState<Block[][] | null>(null);
+  const [layoutSources, setLayoutSources] = useState<("ai" | "text")[] | null>(null);
+  const [selectedPage, setSelectedPage] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -75,9 +78,16 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   const sourceText = pageTexts.filter(Boolean).join("\n\n");
   const layout = buildLayout(trim, { pageCount: Math.max(24, pageTexts.length * 2), bodySize, pageNumbers });
 
-  // Preview the rebuilt page as soon as there is any recognised text, using
-  // the AI structure when it is available and a plain-text pass before that.
-  const preview = blocks ?? (sourceText ? blocksFromText(sourceText) : null);
+  const pageCount = Math.max(pageTexts.length, pageImages?.length ?? 0, beforeUrl ? 1 : 0);
+  const activePage = Math.min(selectedPage, Math.max(0, pageCount - 1));
+  const original = pageImages?.[activePage] || (activePage === 0 ? beforeUrl : undefined);
+  // A page preview must contain only its own blocks, not the whole document.
+  const preview = pageLayouts?.[activePage] ?? (pageTexts[activePage]?.trim() ? blocksFromText(pageTexts[activePage]) : null);
+  const guessed = layoutSources?.[activePage] === "ai";
+
+  function joinPages(pages: Block[][]): Block[] {
+    return pages.flatMap((page, index) => index ? [{ type: "pagebreak" as const }, ...page] : page);
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -94,40 +104,58 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, sourceText, trimId, bodySize, pageNumbers, title]);
+  }, [pageLayouts, activePage, pageTexts, trimId, bodySize, pageNumbers, title]);
 
-  const images = (pageImages ?? []).filter(Boolean);
+  const images = pageImages ?? [];
 
   async function reconstruct() {
-    if (!sourceText && !images.length) {
+    if (!sourceText && !images.some(Boolean)) {
       toast.error("Add a page first.");
       return;
     }
     try {
       let mapped: Block[] = [];
+      const perPage: Block[][] = [];
+      const sources: ("ai" | "text")[] = [];
 
-      if (images.length) {
+      if (images.some(Boolean)) {
         // Look at each photographed page so weight, size, alignment,
         // indentation and spacing come from the original, not from guesswork.
-        for (let i = 0; i < images.length; i++) {
+        for (let i = 0; i < pageCount; i++) {
+          const imageUrl = images[i] || (i === 0 ? beforeUrl : undefined);
+          const text = pageTexts[i]?.trim();
+          if (!imageUrl) {
+            perPage.push(text ? blocksFromText(text) : []);
+            sources.push("text");
+            continue;
+          }
           setBusy(
-            images.length > 1
-              ? `Reading the layout of page ${i + 1} of ${images.length}…`
+            pageCount > 1
+              ? `Reading the layout of page ${i + 1} of ${pageCount}…`
               : "Reading the original layout…",
           );
-          const text = pageTexts[i]?.trim();
           const { blocks: got } = await analyzePageLayout({
-            data: { imageUrl: images[i]!, ...(text ? { text } : {}) },
+            data: { imageUrl, ...(text ? { text } : {}) },
           });
-          if (i > 0 && got.length) mapped.push({ type: "pagebreak" });
-          mapped.push(...got.map(toBlock));
+          perPage.push(got.length ? got.map(toBlock) : text ? blocksFromText(text) : []);
+          sources.push(got.length ? "ai" : "text");
         }
+        mapped = joinPages(perPage);
       }
 
       if (!mapped.length && sourceText) {
         setBusy("Rebuilding from the recognised text…");
-        const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
-        mapped = got.length ? got.map(toBlock) : blocksFromText(sourceText);
+        if (pageCount === 1) {
+          const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
+          perPage.push(got.length ? got.map(toBlock) : blocksFromText(sourceText));
+          sources.push("text");
+        } else {
+          pageTexts.forEach((text) => {
+            perPage.push(blocksFromText(text));
+            sources.push("text");
+          });
+        }
+        mapped = joinPages(perPage);
       }
 
       if (!mapped.length) {
@@ -135,10 +163,15 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
         return;
       }
       setBlocks(mapped);
+      setPageLayouts(perPage);
+      setLayoutSources(sources);
       toast.success("Document rebuilt");
     } catch (e) {
       if (sourceText) {
-        setBlocks(blocksFromText(sourceText));
+        const fallbackPages = pageTexts.map((text) => blocksFromText(text));
+        setBlocks(joinPages(fallbackPages));
+        setPageLayouts(fallbackPages);
+        setLayoutSources(fallbackPages.map(() => "text"));
         toast.error(
           e instanceof Error ? `${e.message} Rebuilt from the text instead.` : "Rebuilt from the text instead.",
         );
@@ -151,7 +184,7 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   }
 
   async function exportFile(kind: "pdf" | "docx") {
-    const use = blocks ?? (sourceText ? blocksFromText(sourceText) : null);
+    const use = blocks ?? (sourceText ? joinPages(pageTexts.map((text) => blocksFromText(text))) : null);
     if (!use) {
       toast.error("Nothing to export yet.");
       return;
@@ -236,26 +269,50 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
         </Button>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <figure>
-          <figcaption className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Before</figcaption>
-          {beforeUrl ? (
-            <img src={beforeUrl} alt="Original photographed page" className="w-full rounded-lg bg-paper" />
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-border pt-4">
+        <h3 className="font-display text-sm font-semibold">Layout comparison</h3>
+        {pageCount > 1 && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground" aria-label="Comparison page">
+            <Button size="icon" variant="ghost" className="h-8 w-8" disabled={activePage === 0} onClick={() => setSelectedPage(activePage - 1)} aria-label="Previous page" title="Previous page">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-14 text-center tabular-nums">{activePage + 1} / {pageCount}</span>
+            <Button size="icon" variant="ghost" className="h-8 w-8" disabled={activePage === pageCount - 1} onClick={() => setSelectedPage(activePage + 1)} aria-label="Next page" title="Next page">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-2 items-start gap-2 sm:gap-4">
+        <figure className="min-w-0">
+          <figcaption className="mb-2 text-xs font-medium text-muted-foreground">Original page</figcaption>
+          {original ? (
+            <img src={original} alt={`Original page ${activePage + 1}`} className="block w-full bg-paper object-contain" />
           ) : (
-            <div className="aspect-[3/4] w-full rounded-lg bg-muted" />
+            <div className="flex aspect-[3/4] w-full items-center justify-center bg-muted p-2 text-center text-xs text-muted-foreground">No page image</div>
           )}
         </figure>
-        <figure>
-          <figcaption className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">After</figcaption>
+        <figure className="min-w-0">
+          <figcaption className="mb-2 text-xs font-medium text-muted-foreground">{guessed ? "AI-guessed layout" : "Text-only preview"}</figcaption>
           {preview ? (
-            <canvas ref={canvasRef} className="w-full rounded-lg bg-paper" />
+            <canvas ref={canvasRef} aria-label={`Rebuilt page ${activePage + 1}`} className="block w-full bg-paper" />
           ) : (
-            <div className="flex aspect-[3/4] w-full items-center justify-center rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">
-              Read the text of a page to see the rebuilt version
+            <div className="flex aspect-[3/4] w-full items-center justify-center bg-muted p-3 text-center text-xs text-muted-foreground">
+              Rebuild this page to compare its layout
             </div>
           )}
         </figure>
       </div>
+      {pageLayouts?.[activePage]?.length ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-xs text-muted-foreground">{guessed ? "Detected on this page" : "Inferred from text only"}</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground">
+            <span>{pageLayouts[activePage].filter((b) => b.type === "heading").length} headings</span>
+            <span>{pageLayouts[activePage].filter((b) => b.type !== "pagebreak" && "bold" in b && (b.bold || b.text.includes("**"))).length} bold blocks</span>
+            <span>{pageLayouts[activePage].filter((b) => b.type !== "pagebreak" && "align" in b && b.align === "center").length} centered blocks</span>
+          </div>
+        </div>
+      ) : null}
 
       {busy && (
         <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
