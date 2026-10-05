@@ -16,47 +16,6 @@ type Props = {
   beforeUrl: string | undefined;
 };
 
-type AiBlock = {
-  type: "heading" | "paragraph" | "list" | "quote" | "toc" | "pagebreak";
-  level?: 1 | 2 | 3 | undefined;
-  text: string;
-  page?: string | undefined;
-  align?: "left" | "center" | "right" | undefined;
-  bold?: boolean | undefined;
-  sizeScale?: number | undefined;
-  indent?: boolean | undefined;
-  spaceBefore?: number | undefined;
-};
-
-/** Turns one AI-described piece of the page into a drawable block. */
-function toBlock(b: AiBlock): Block {
-  if (b.type === "pagebreak") return { type: "pagebreak" };
-  const metrics = {
-    sizeScale: b.sizeScale,
-    indent: b.indent,
-    spaceBefore: b.spaceBefore,
-  };
-  if (b.type === "heading")
-    return {
-      type: "heading",
-      level: (b.level ?? 2) as 1 | 2 | 3,
-      text: b.text,
-      align: b.align ?? "center",
-      bold: b.bold ?? true,
-      ...metrics,
-    };
-  if (b.type === "toc")
-    return {
-      type: "toc",
-      text: b.text,
-      page: b.page ?? "",
-      level: (b.level ?? 2) as 1 | 2 | 3,
-      bold: b.bold ?? false,
-      ...metrics,
-    };
-  return { type: b.type, text: b.text, align: b.align ?? "left", bold: b.bold ?? false, ...metrics };
-}
-
 /**
  * Rebuilds the recognised document as a print-ready book at a chosen trim
  * size, with a before/after comparison of the original photo and the
@@ -118,75 +77,27 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   const images = pageImages ?? [];
 
   async function reconstruct() {
-    if (!sourceText && !images.some(Boolean)) {
-      toast.error("Add a page first.");
+    if (!sourceText) {
+      toast.error("Read the text of your pages first.");
       return;
     }
+    setBusy("Rebuilding the document…");
+    await new Promise((r) => setTimeout(r, 30));
     try {
-      let mapped: Block[] = [];
-      const perPage: Block[][] = [];
-      const sources: ("ai" | "text")[] = [];
-
-      if (images.some(Boolean)) {
-        // Look at each photographed page so weight, size, alignment,
-        // indentation and spacing come from the original, not from guesswork.
-        for (let i = 0; i < pageCount; i++) {
-          const imageUrl = images[i] || (i === 0 ? beforeUrl : undefined);
-          const text = pageTexts[i]?.trim();
-          if (!imageUrl) {
-            perPage.push(text ? blocksFromText(text) : []);
-            sources.push("text");
-            continue;
-          }
-          setBusy(
-            pageCount > 1
-              ? `Reading the layout of page ${i + 1} of ${pageCount}…`
-              : "Reading the original layout…",
-          );
-          const { blocks: got } = await analyzePageLayout({
-            data: { imageUrl, ...(text ? { text } : {}) },
-          });
-          perPage.push(got.length ? got.map(toBlock) : text ? blocksFromText(text) : []);
-          sources.push(got.length ? "ai" : "text");
-        }
-        mapped = joinPages(perPage);
-      }
-
-      if (!mapped.length && sourceText) {
-        setBusy("Rebuilding from the recognised text…");
-        if (pageCount === 1) {
-          const { blocks: got } = await analyzeLayout({ data: { text: sourceText } });
-          perPage.push(got.length ? got.map(toBlock) : blocksFromText(sourceText));
-          sources.push("text");
-        } else {
-          pageTexts.forEach((text) => {
-            perPage.push(blocksFromText(text));
-            sources.push("text");
-          });
-        }
-        mapped = joinPages(perPage);
-      }
-
+      // Free, on-device rebuild: derive the layout from the recognised text
+      // of each page — no AI credits, no limits.
+      const perPage: Block[][] = pageTexts.map((text) => (text.trim() ? blocksFromText(text) : []));
+      const mapped = joinPages(perPage);
       if (!mapped.length) {
         toast.error("Could not read the layout of this page.");
         return;
       }
       setBlocks(mapped);
       setPageLayouts(perPage);
-      setLayoutSources(sources);
+      setLayoutSources(perPage.map(() => "text"));
       toast.success("Document rebuilt");
     } catch (e) {
-      if (sourceText) {
-        const fallbackPages = pageTexts.map((text) => blocksFromText(text));
-        setBlocks(joinPages(fallbackPages));
-        setPageLayouts(fallbackPages);
-        setLayoutSources(fallbackPages.map(() => "text"));
-        toast.error(
-          e instanceof Error ? `${e.message} Rebuilt from the text instead.` : "Rebuilt from the text instead.",
-        );
-      } else {
-        toast.error(e instanceof Error ? e.message : "Could not rebuild the document");
-      }
+      toast.error(e instanceof Error ? e.message : "Could not rebuild the document");
     } finally {
       setBusy(null);
     }
