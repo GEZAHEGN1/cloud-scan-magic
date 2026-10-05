@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TRIM_SIZES, buildLayout, type TrimSize } from "@/lib/booksizes";
 import { blocksFromText, renderBookPdf, renderPreview, type Block } from "@/lib/reconstruct";
-import { analyzeLayout, analyzePageLayout } from "@/lib/scans.functions";
 
 type Props = {
   title: string;
