@@ -27,7 +27,7 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   const [pageNumbers, setPageNumbers] = useState(true);
   const [blocks, setBlocks] = useState<Block[] | null>(null);
   const [pageLayouts, setPageLayouts] = useState<Block[][] | null>(null);
-  const [layoutSources, setLayoutSources] = useState<("ai" | "text")[] | null>(null);
+  const [layoutSources, setLayoutSources] = useState<"text"[] | null>(null);
   const [selectedPage, setSelectedPage] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,7 +51,7 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
   const original = pageImages?.[activePage] || (activePage === 0 ? beforeUrl : undefined);
   // A page preview must contain only its own blocks, not the whole document.
   const preview = pageLayouts?.[activePage] ?? (pageTexts[activePage]?.trim() ? blocksFromText(pageTexts[activePage]) : null);
-  const guessed = layoutSources?.[activePage] === "ai";
+  const rebuilt = !!layoutSources?.[activePage];
 
   function joinPages(pages: Block[][]): Block[] {
     return pages.flatMap((page, index) => index ? [{ type: "pagebreak" as const }, ...page] : page);
@@ -74,7 +74,6 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageLayouts, activePage, pageTexts, trimId, bodySize, pageNumbers, title]);
 
-  const images = pageImages ?? [];
 
   async function reconstruct() {
     if (!sourceText) {
@@ -213,7 +212,7 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
           )}
         </figure>
         <figure className="min-w-0">
-          <figcaption className="mb-2 text-xs font-medium text-muted-foreground">{guessed ? "AI-guessed layout" : "Text-only preview"}</figcaption>
+          <figcaption className="mb-2 text-xs font-medium text-muted-foreground">{rebuilt ? "Rebuilt page" : "Text-only preview"}</figcaption>
           {preview ? (
             <canvas ref={canvasRef} aria-label={`Rebuilt page ${activePage + 1}`} className="block w-full bg-paper" />
           ) : (
@@ -225,7 +224,7 @@ export function ReconstructPanel({ title, fileBase, pageTexts, pageImages, befor
       </div>
       {pageLayouts?.[activePage]?.length ? (
         <div className="mt-3 border-t border-border pt-3">
-          <p className="text-xs text-muted-foreground">{guessed ? "Detected on this page" : "Inferred from text only"}</p>
+          <p className="text-xs text-muted-foreground">Detected on this page</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground">
             <span>{pageLayouts[activePage].filter((b) => b.type === "heading").length} headings</span>
             <span>{pageLayouts[activePage].filter((b) => b.type !== "pagebreak" && "bold" in b && (b.bold || b.text.includes("**"))).length} with bold text</span>
