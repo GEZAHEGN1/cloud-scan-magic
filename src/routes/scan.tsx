@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { recognizePageText } from "@/lib/ocr";
+import { recognizeText } from "@/lib/scans.functions";
 import {
   autoDetectQuad,
   canvasToBlob,
@@ -184,9 +184,16 @@ function ScanPage() {
   async function readText(id: string) {
     const page = pages.find((p) => p.id === id);
     if (!page) return;
-    setBusy("Reading the text… (first read downloads the free reader)");
+    setBusy("Reading the text…");
     try {
-      const text = await recognizePageText(page.canvas);
+      const small = document.createElement("canvas");
+      const scale = Math.min(1, 1500 / page.canvas.width);
+      small.width = Math.round(page.canvas.width * scale);
+      small.height = Math.round(page.canvas.height * scale);
+      small.getContext("2d")!.drawImage(page.canvas, 0, 0, small.width, small.height);
+      const { text } = await recognizeText({
+        data: { imageDataUrl: small.toDataURL("image/jpeg", 0.85) },
+      });
       setPages((prev) => prev.map((p) => (p.id === id ? { ...p, text } : p)));
       toast.success(text ? "Text captured" : "No text found on this page");
     } catch (err) {
